@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatbot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #1e1e1e;
+      color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 { margin-bottom: 20px; }
+    #chatbox {
+      width: 100%;
+      max-width: 600px;
+      height: 400px;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 10px;
+      overflow-y: scroll;
+      background-color: #2c2c2c;
+    }
+    .message {
+      margin: 8px 0;
+      padding: 6px 10px;
+      border-radius: 6px;
+    }
+    .user { background-color: #0d6efd; color: #fff; align-self: flex-end; }
+    .bot { background-color: #444; color: #fff; align-self: flex-start; }
+    #inputForm { margin-top: 10px; display: flex; width: 100%; max-width: 600px; }
+    #messageInput {
+      flex: 1;
+      padding: 10px;
+      border-radius: 6px 0 0 6px;
+      border: 1px solid #444;
+      outline: none;
+    }
+    #sendBtn {
+      padding: 10px 20px;
+      border: 1px solid #444;
+      background-color: #0d6efd;
+      color: #fff;
+      border-radius: 0 6px 6px 0;
+      cursor: pointer;
+    }
+    #sendBtn:hover { background-color: #0b5ed7; }
+  </style>
+</head>
+<body>
+  <h1>Chatbot</h1>
+  <div id="chatbox"></div>
+  <form id="inputForm">
+    <input type="text" id="messageInput" placeholder="Type your message..." autocomplete="off" required />
+    <button type="submit" id="sendBtn">Send</button>
+  </form>
+
+  <script>
+    const chatbox = document.getElementById('chatbox');
+    const form = document.getElementById('inputForm');
+    const input = document.getElementById('messageInput');
+
+    function appendMessage(text, sender) {
+      const msgDiv = document.createElement('div');
+      msgDiv.classList.add('message', sender);
+      msgDiv.textContent = text;
+      chatbox.appendChild(msgDiv);
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const userMessage = input.value.trim();
+      if (!userMessage) return;
+
+      appendMessage(userMessage, 'user');
+      input.value = '';
+
+      try {
+        const response = await fetch('http://127.0.0.1:8000/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: userMessage })
+        });
+        const data = await response.json();
+
+        // CORRECT FIELDS
+        appendMessage(`${data.response} (${data.tool_used})`, 'bot');
+
+      } catch (err) {
+        appendMessage("Error: Could not reach chatbot.", 'bot');
+      }
+    });
+  </script>
+
+
+</body>
+</html>
