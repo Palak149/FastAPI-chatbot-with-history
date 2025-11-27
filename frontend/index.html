@@ -2,12 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+
+  <!-- Ensures mobile responsiveness -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>Chatbot</title>
+
   <style>
+    /* ----------- BASIC PAGE STYLING ----------- */
     body {
       font-family: Arial, sans-serif;
-      background-color: #1e1e1e;
+      background-color: #1e1e1e; /* Dark theme background */
       color: #f0f0f0;
       display: flex;
       flex-direction: column;
@@ -15,25 +20,52 @@
       margin: 0;
       padding: 20px;
     }
+
     h1 { margin-bottom: 20px; }
+
+    /* ----------- CHATBOX AREA ---------- */
     #chatbox {
       width: 100%;
-      max-width: 600px;
+      max-width: 600px;         /* Prevents chatbox from becoming too wide */
       height: 400px;
       border: 1px solid #444;
       border-radius: 8px;
       padding: 10px;
-      overflow-y: scroll;
+      overflow-y: scroll;       /* Enables scrolling inside chat box */
       background-color: #2c2c2c;
     }
+
+    /* ----------- MESSAGE BUBBLES ---------- */
     .message {
       margin: 8px 0;
       padding: 6px 10px;
       border-radius: 6px;
+      max-width: 80%;           /* Messages won't stretch too wide */
     }
-    .user { background-color: #0d6efd; color: #fff; align-self: flex-end; }
-    .bot { background-color: #444; color: #fff; align-self: flex-start; }
-    #inputForm { margin-top: 10px; display: flex; width: 100%; max-width: 600px; }
+
+    /* User message bubble (blue, right aligned) */
+    .user {
+      background-color: #0d6efd;
+      color: #fff;
+      align-self: flex-end;
+    }
+
+    /* Bot message bubble (gray, left aligned) */
+    .bot {
+      background-color: #444;
+      color: #fff;
+      align-self: flex-start;
+    }
+
+    /* ----------- INPUT AREA STYLING ---------- */
+    #inputForm {
+      margin-top: 10px;
+      display: flex;
+      width: 100%;
+      max-width: 600px;
+    }
+
+    /* Input box */
     #messageInput {
       flex: 1;
       padding: 10px;
@@ -41,6 +73,8 @@
       border: 1px solid #444;
       outline: none;
     }
+
+    /* Send button */
     #sendBtn {
       padding: 10px 20px;
       border: 1px solid #444;
@@ -49,55 +83,99 @@
       border-radius: 0 6px 6px 0;
       cursor: pointer;
     }
-    #sendBtn:hover { background-color: #0b5ed7; }
+
+    #sendBtn:hover {
+      background-color: #0b5ed7;
+    }
   </style>
 </head>
 <body>
+
   <h1>Chatbot</h1>
+
+  <!-- Box where messages will appear -->
   <div id="chatbox"></div>
+
+  <!-- Form that sends user messages -->
   <form id="inputForm">
-    <input type="text" id="messageInput" placeholder="Type your message..." autocomplete="off" required />
+    <input type="text"
+           id="messageInput"
+           placeholder="Type your message..."
+           autocomplete="off"
+           required />
     <button type="submit" id="sendBtn">Send</button>
   </form>
 
   <script>
+    /* ------------------------- 
+       GET HTML ELEMENTS
+    -------------------------- */
     const chatbox = document.getElementById('chatbox');
     const form = document.getElementById('inputForm');
     const input = document.getElementById('messageInput');
 
+    /* -------------------------
+       FUNCTION TO ADD MESSAGES 
+       TO THE CHATBOX
+    -------------------------- */
     function appendMessage(text, sender) {
       const msgDiv = document.createElement('div');
+
+      // Add message and styling
       msgDiv.classList.add('message', sender);
       msgDiv.textContent = text;
+
+      // Add to chatbox
       chatbox.appendChild(msgDiv);
+
+      // Auto scroll to bottom
       chatbox.scrollTop = chatbox.scrollHeight;
     }
 
+    /* -------------------------
+       HANDLE FORM SUBMISSION
+    -------------------------- */
     form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const userMessage = input.value.trim();
-      if (!userMessage) return;
+      e.preventDefault(); // Prevent page reload
 
+      const userMessage = input.value.trim();
+      if (!userMessage) return; // Ignore empty messages
+
+      // Show user's message in chat
       appendMessage(userMessage, 'user');
+
+      // Clear input field
       input.value = '';
 
       try {
+
+        /* ---- API CALL TO FASTAPI BACKEND ---- */
         const response = await fetch('http://127.0.0.1:8000/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: userMessage })
+          body: JSON.stringify({ message: userMessage })   // Sending message to backend
         });
+
+        // Convert backend response into JSON
         const data = await response.json();
 
-        // CORRECT FIELDS
+        /*
+            Backend sends:
+            {
+              response: "... chatbot reply ...",
+              tool_used: "marks" / "positive" / ...
+            }
+        */
+
+        // Display bot response + tool used
         appendMessage(`${data.response} (${data.tool_used})`, 'bot');
 
       } catch (err) {
+        // If backend is offline or error happens
         appendMessage("Error: Could not reach chatbot.", 'bot');
       }
     });
   </script>
-
 
 </body>
 </html>
