@@ -2,13 +2,8 @@ fastapi==0.111.1
 uvicorn[standard]==0.23.2
 python-dotenv==1.0.1
 
-# Core LangChain + Google Gemini integration
 langchain==1.1.0
-langchain-google-genai>=3.0.0    # Use latest published version
-langchain-core==1.1.0            # match major LangChain core version
+langchain-google-genai>=3.0.0
+langchain-core==1.1.0
 
-# Optional dependencies (only if needed)
-torch==2.1.0
-transformers==4.40.1
-sentence-transformers==2.2.2
-pydantic==1.10.12
+google-generativeai>=0.7.0
