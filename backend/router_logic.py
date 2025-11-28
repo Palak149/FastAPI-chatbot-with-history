@@ -43,7 +43,6 @@ llm = ChatGoogleGenerativeAI(
 # ---------------------------------------------------------
 # ConversationBufferMemory stores the context (chat history)
 # Only stores user input ("request") and AI output ("response")
-# tool_used is NOT stored in LangChain memory.
 # =========================================================
 memory = ConversationBufferMemory(
     input_key="request",        # Key used for user message
