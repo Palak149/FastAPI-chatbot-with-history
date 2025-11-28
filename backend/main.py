@@ -12,7 +12,6 @@ app = FastAPI()
 # Configure CORS (Cross-Origin Resource Sharing)
 # ------------------------------
 # CORS allows your frontend (running on a different domain/port) to call this API.
-# In production, replace "*" with the actual URL of your deployed frontend for security.
 
 app.add_middleware(
     CORSMiddleware,
