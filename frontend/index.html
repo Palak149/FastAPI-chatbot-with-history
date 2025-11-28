@@ -149,13 +149,12 @@
 
       try {
 
-        /* ---- API CALL TO FASTAPI BACKEND ---- */
-        const response = await fetch('https://fastapi-chatbot-with-history.onrender.com
-', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: userMessage })   // Sending message to backend
-        });
+      /* ---- API CALL TO FASTAPI BACKEND ---- */
+const response = await fetch('https://fastapi-chatbot-with-history.onrender.com/chat', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ message: userMessage })   // Sending message to backend
+});
 
         // Convert backend response into JSON
         const data = await response.json();
