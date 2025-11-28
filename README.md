@@ -35,6 +35,66 @@ Final Response + Tool Used
 Memory Updated
 
 
+Architecture Diagram 
+                    ┌────────────────────┐
+                    │    User Message    │
+                    └─────────┬──────────┘
+                              │
+                              ▼
+                    ┌────────────────────┐
+                    │     Router LLM     │
+                    │ (Classifies input) │
+                    └─────────┬──────────┘
+                              │  decision = 
+                              │  positive / negative /
+                              │  marks / suicide / default
+                              ▼
+           ┌───────────────────────────────────────────┐
+           │           RunnableBranch Router            │
+           └─────────┬──────────────┬───────────┬──────┘
+                     │              │           │
+     decision=positive│    decision=negative     │
+                     │              │           │
+                     ▼              ▼           ▼
+        ┌─────────────────┐   ┌──────────────────┐
+        │ positive_branch │   │ negative_branch  │
+        └────────┬────────┘   └─────────┬────────┘
+                 │                      │
+                 │                      │
+                 ▼                      ▼
+        (Runs positive_tool)    (Runs negative_tool)
+
+                     ┌──────────────────────────────┐
+ decision=marks  --> │          marks_branch        │
+                     └──────────────┬───────────────┘
+                                    │
+                                    ▼
+                           (Runs marks_tool)
+
+                     ┌──────────────────────────────┐
+ decision=suicide -->│        suicide_branch        │
+                     └──────────────┬───────────────┘
+                                    │
+                                    ▼
+                          (Runs suicide_tool)
+
+                     ┌──────────────────────────────┐
+ decision=default -->│       default_branch         │
+                     └──────────────────────────────┘
+                               │
+                               ▼
+                     (Runs default_tool)
+
+                              ▼
+                    ┌────────────────────┐
+                    │ Final Response     │
+                    │ + Tool Used        │
+                    └────────────────────┘
+                              │
+                              ▼
+                    ┌────────────────────┐
+                    │  Saved to Memory   │
+                    └────────────────────┘
 
 Project Files
 app/
@@ -212,3 +272,5 @@ support agents
 emotion-aware assistants
 
 educational tools
+
+
