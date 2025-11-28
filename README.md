@@ -1,465 +1,214 @@
-# FastAPI Chatbot with Conversation History
- 
-Project Overview-
- 
-This project is a FastAPI-based chatbot that uses LangChain, Google Gemini, and a tool-router architecture to classify user messages and respond intelligently.
-It includes:
- LLM (Gemini 2.5 Flash)
- Custom tools (positive, negative, marks, suicide-safe, general)
- Router-chain to classify intent
- Memory for chat history
- Frontend HTML + JavaScript chatbot UI
- Full API integration (CORS enabled)
+LLM Router System using LangChain + Gemini
 
-1. High-Level System Architecture
+This project implements a dynamic LLM router in Python using LangChain and Google Gemini (gemini-2.5-flash).
+The system classifies each user message (positive, negative, marks, suicide, default) and routes it to the correct tool branch, generating safe and context-aware responses.
 
-The project is divided into two major layers:
+ Features
 
-1.1 Frontend (Client Layer)
+Automatic message classification (positive, negative, marks, suicide, default)
 
-Built using HTML, CSS, JavaScript
+ Conversation Memory (LangChain ConversationBufferMemory)
 
-Displays chat interface
+ Tool-based routing using RunnableBranch
 
-Sends user messages to backend via REST API
+ Gemini LLM integrated via LangChain
 
-Receives chatbot responses
+ Dynamic prompts for each type of user emotion/request
 
-Handles UI updates, auto-scroll, message formatting
+ Example student marks database
 
-1.2 Backend (Server Layer)
+ Safe response handling for self-harm messages
 
-Built using FastAPI
 
-Provides REST endpoints: /chat and /history
+ Architecture Overview
+User Message
+      ↓
+  Router LLM
+ (classification)
+      ↓
+RunnableBranch Router
+      ↓
+Selected Tool Branch
+      ↓
+Final Response + Tool Used
+      ↓
+Memory Updated
 
-Integrates with LangChain and Google Gemini 2.5 Flash
 
-Maintains in-memory history
 
-Implements:
+Project Files
+app/
+│── router.py          # Router logic + branches + tools
+│── agent.py           # Main chat agent
+│── data.py            # Marks database (sample)
+│── README.md
 
-Router (intent classifier)
+ How Routing Works
+1️⃣ Router Prompt
 
-Tools (logic modules)
-
-Memory (chat history)
-
-Delegation (branching logic)
-
-Overall flow:
-Frontend → Backend → LLM → Backend → Frontend
-
-2. Backend Architecture
-2.1 File Structure
-
-FastAPI-chatbot-with-history/
-│
-├── backend/
-│   ├── main.py              → FastAPI app + endpoints + CORS + history
-│   ├── router_logic.py      → LLM, memory, tools, router, chat_agent()
-│ 
-├── frontend/
-│   ├── index.html           → Chat UI + JavaScript API calls
-│
-├── .env
-├── 3.0.0/                   → Python environment metadata (ignored by .gitignore)
-│
-├── requirements.txt         → All dependency packages
-│
-├── .gitignore               → Ignore venv, pycache, system files
-│
-└── README.md                → This documentation
-├── runtime.txt
-
-3. FastAPI Backend (main.py)
-3.1 API Initialization
-
-Creates FastAPI app instance
-
-Configures CORS to allow frontend to communicate with backend
-
-allow_origins=["*"]
-allow_methods=["*"]
-allow_headers=["*"]
-
-3.2 /chat Endpoint
-
-Steps:
-
-Receives JSON from frontend:
-
-{ "message": "Hello" }
-
-
-Validates message
-
-Assigns a session_id if not provided
-
-Calls:
-
-chat_agent(user_input)
-
-
-Saves details to HISTORY list:
-
-{
-  session_id,
-  user_query,
-  response,
-  tool_used
-}
-
-
-Returns JSON response to frontend.
-
-3.3 /history Endpoint
-
-Returns complete conversation history:
-
-{ "history": [ ... ] }
-
-4. LLM Logic (router_logic.py)
-4.1 LLM Setup
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
-
-
-Used for:
-
-Routing (classification)
-
-Tool responses
-
-General replies
-
-4.2 Memory System
-
-Uses LangChain ConversationBufferMemory
-
-Stores:
-
-User queries
-
-Bot responses
-
-Enables contextual conversations
-
-Example stored history:
-
-User: Hello
-Bot: Hi there!
-User: What are Alice’s marks?
-Bot: Alice scored...
-
-4.3 Tools (Logic Modules)
-
-Tools are modular functions executed based on router decision.
-
-positive_tool
-Handles happy/positive messages.
-
-negative_tool
-Handles sad or negative messages.
-
-marks_tool
-Answers student mark queries using predefined JSON data.
-
-suicide_tool_dynamic
-Handles self-harm or critical messages in a safe and compliant way.
-
-default_tool
-Handles general conversation.
-
-Each tool:
-
-Uses chat history
-
-Generates LLM prompt
-
-Returns LLM response
-
-4.4 Router (Intent Classifier)
-
-Classifies user input into five categories:
-
-positive
-
-negative
-
-marks
-
-suicide
-
-default
-
-The router prompt instructs LLM to output only one category.
-
-Example:
-
-“I am very happy today.” → positive
-
-“I am feeling sad.” → negative
-
-“What are Bob’s marks?” → marks
-
-“I want to harm myself.” → suicide
-
-“Tell me a joke.” → default
-
-4.5 Delegation (Routing Logic)
-
-Uses LangChain RunnableBranch:
-
-IF positive → positive_tool  
-ELSE IF negative → negative_tool  
-ELSE IF marks → marks_tool  
-ELSE IF suicide → suicide_tool_dynamic  
-ELSE → default_tool
-
-
-This creates a clean, scalable routing system.
-
-4.6 Main Orchestrator: chat_agent()
-
-This function performs the entire AI processing pipeline.
-
-Steps:
-
-Loads chat history from memory
-
-Router classifies the user input
-
-Builds routing data
-
-Executes selected tool
-
-Saves conversation into memory
-
-Returns structured result:
-
-{
-  "response": "...",
-  "tool_used": "marks"
-}
-
-5. Frontend Architecture (index.html)
-5.1 Responsibilities
-
-Displays chat UI
-
-Captures user input
-
-Sends POST request to backend:
-
-http://127.0.0.1:8000/chat
-
-
-Displays bot response
-
-Auto-scrolls chatbox
-
-Shows which tool was used
-
-Handles errors (backend down, network failure)
-
-5.2 Fetch Request Structure
-fetch("http://127.0.0.1:8000/chat", {
-  method: "POST",
-  headers: {"Content-Type": "application/json"},
-  body: JSON.stringify({ message: userMessage })
-})
-
-6. End-to-End Data Flow
-
-Step-by-step sequence:
-
-User types message in frontend
-
-Frontend sends JSON to backend
-
-Backend receives message
-
-chat_agent() loads memory
-
-LLM router classifies intent
-
-Delegation selects appropriate tool
-
-Tool generates LLM prompt and response
-
-Memory stores the conversation
-
-Backend stores entry in HISTORY
-
-Backend returns JSON response
-
-Frontend displays bot message
-
-7. Key Advantages of This Architecture
-
-Modular — Tools and router can be expanded easily
-
-Scalable — New categories can be added without redesign
-
-Safe — Suicide-tool ensures safety compliance
-
-Contextual — Memory maintains conversation flow
-
-Clean separation — Frontend and backend remain independent
-
-Extensible — More tools or APIs can be plugged in as needed
-
-
- Folder Structure Explained
-FastAPI-chatbot-with-history/
-│
-├── backend/
-
-│   ├── venv/                → Virtual environment (ignored)
-│   ├── main.py              → FastAPI app + endpoints + CORS + history
-│   ├── router_logic.py      → LLM, memory, tools, router, chat_agent()
-│ 
-├── frontend/
-│   ├── index.html           → Chat UI + JavaScript API calls
-│
-├── 3.0.0/                   → Python environment metadata (ignored by .gitignore)
-│
-├── requirements.txt         → All dependency packages
-│
-├── .gitignore               → Ignore venv, pycache, system files
-│
-└── README.md                → This documentation
-
- What Each File Contains
- backend/main.py
-
-Starts FastAPI application
-
-CORS setup (allows frontend to call backend)
-
-/chat POST endpoint
-
-Reads message from frontend
-
-Calls chat_agent()
-
-Stores conversation in memory
-
-Returns LLM response
-
-/history GET endpoint
-
-Returns full conversation history
-
-backend/router_logic.py
-
-Contains the entire AI logic:
-
-✓ LLM Setup
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
-
-✓ Memory
-
-Stores conversation:
-
-ConversationBufferMemory()
-
-✓ Tools
-
-Custom functions used by the router:
-
-positive_tool()
-
-negative_tool()
-
-marks_tool()
-
-suicide_tool_dynamic()
-
-default_tool()
-
-✓ Router
-
-LLM-based classifier that returns:
+A classifier LLM receives the user text and outputs:
 
 positive | negative | marks | suicide | default
 
-✓ delegation_chain
+2️⃣ RunnableBranch Routing
 
-Decides which tool will answer the user.
+LangChain’s RunnableBranch behaves like IF–ELSE for LLM workflows:
 
-✓ chat_agent()
+delegation_chain = RunnableBranch(
+    (is_positive, positive_branch),
+    (is_negative, negative_branch),
+    (is_marks, marks_branch),
+    (is_suicide, suicide_branch),
+    default_branch
+)
 
-The core method:
 
-Classifies input
+Whichever condition returns True, that branch is executed.
 
-Chooses proper tool
+ Tools / Branches
 
-Saves memory
+Each tool contains:
 
-Returns response + tool name
+custom prompt
 
-Input → Output Processing Flow
+Gemini LLM invocation
 
- User types message in frontend →
-JavaScript sends:
+tool name
 
-{
-  "message": "How are you?"
+Tool Name	When Triggered	Description
+positive	user is happy	responds energetically
+negative	sadness / complaint	supportive tone
+marks	questions about student marks	returns marks info
+suicide	self-harm signals	safe empathetic response
+default	all other queries	general response
+ Conversation Memory
+
+Uses:
+
+ConversationBufferMemory(
+    input_key="request",
+    memory_key="chat_history",
+    return_messages=True,
+    output_key="response"
+)
+
+
+This stores:
+
+past user requests
+
+LLM responses
+
+tool used
+
+and passes them to tools for context.
+
+ Sample Marks Database
+marks_data = {
+    "Alice": {"Math": 95, "Science": 88, "English": 92},
+    "Bob":   {"Math": 78, "Science": 85, "English": 80}
 }
 
+ How to Use
+Run the chat system
+from agent import chat_agent
 
- Backend receives message
-Calls:
+print(chat_agent("I am happy today."))
 
-chat_agent(user_input)
+Example Output
+{
+  "response": "That's amazing! I'm happy for you 😊",
+  "tool_used": "positive"
+}
 
+🧪 Example Sessions
+💬 1. Positive Input
 
- Router classifies it
-Example:
+User:
+I am very happy today!
 
+Classifier Output:
 positive
 
+Tool Fired:
+positive_branch
 
- Correct tool is executed
-Example:
+💬 2. Marks Query
 
-positive_tool()
+User:
+What are Alice’s marks in Science?
 
+Classifier Output:
+marks
 
- Result returned to frontend
-Example response:
+Tool Fired:
+marks_branch
 
-{
-  "response": "I'm feeling great today!",
-  "tool_used": "positive",
-  "session_id": "abc123..."
-}
+💬 3. Negative Input
 
+User:
+I feel so stressed today.
 
- Frontend displays message in chatbox.
+Classifier Output:
+negative
 
- How to Run Locally
-1. Start backend
-uvicorn backend.main:app --reload
+Tool Fired:
+negative_branch
 
-2. Open frontend
+💬 4. Self-harm Message
 
-Open frontend/index.html in any browser.
+User:
+I don't want to live anymore.
 
- Features Included
+Classifier Output:
+suicide
 
-✔ LLM-based intent classification
+Tool Fired:
+suicide_branch
 
-✔ Multiple AI tools
+📦 Libraries Used
 
-✔ Conversation memory
+LangChain Core
 
-✔ Suicide-safe responses
+LangChain Google GenAI
 
-✔ Fully integrated frontend
+Google Gemini 2.5 Flash
 
-✔ History endpoint
+Python 3.10+
 
-✔ Clean FastAPI architecture
+dotenv
+
+🔍 Key LangChain Concepts Used
+Concept	Why Used
+ChatPromptTemplate	structured routing prompt
+RunnableBranch	condition-based tool routing
+RunnablePassthrough.assign	attach tool outputs
+ConversationBufferMemory	maintain chat history
+StrOutputParser	clean classifier output
+🧭 Why RunnableBranch? (In One Line)
+
+Because it allows IF–ELSE style routing between multiple tools based on LLM-generated decisions.
+
+🏁 Conclusion
+
+This project demonstrates how to build an LLM agent with:
+
+intelligent routing
+
+tool calling
+
+memory
+
+safe response handling
+
+modular and clean architecture
+
+Ready for:
+
+chatbots
+
+support agents
+
+emotion-aware assistants
+
+educational tools
