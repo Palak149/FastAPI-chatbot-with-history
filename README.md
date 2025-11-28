@@ -121,7 +121,7 @@ Example Output
   "tool_used": "positive"
 }
 
-🧪 Example Sessions
+ Example Sessions
 💬 1. Positive Input
 
 User:
@@ -133,7 +133,7 @@ positive
 Tool Fired:
 positive_branch
 
-💬 2. Marks Query
+ 2. Marks Query
 
 User:
 What are Alice’s marks in Science?
@@ -144,7 +144,7 @@ marks
 Tool Fired:
 marks_branch
 
-💬 3. Negative Input
+3. Negative Input
 
 User:
 I feel so stressed today.
@@ -155,7 +155,7 @@ negative
 Tool Fired:
 negative_branch
 
-💬 4. Self-harm Message
+💬4. Self-harm Message
 
 User:
 I don't want to live anymore.
@@ -166,7 +166,7 @@ suicide
 Tool Fired:
 suicide_branch
 
-📦 Libraries Used
+ Libraries Used
 
 LangChain Core
 
@@ -178,18 +178,18 @@ Python 3.10+
 
 dotenv
 
-🔍 Key LangChain Concepts Used
+ Key LangChain Concepts Used
 Concept	Why Used
 ChatPromptTemplate	structured routing prompt
 RunnableBranch	condition-based tool routing
 RunnablePassthrough.assign	attach tool outputs
 ConversationBufferMemory	maintain chat history
 StrOutputParser	clean classifier output
-🧭 Why RunnableBranch? (In One Line)
+ Why RunnableBranch? (In One Line)
 
 Because it allows IF–ELSE style routing between multiple tools based on LLM-generated decisions.
 
-🏁 Conclusion
+ Conclusion
 
 This project demonstrates how to build an LLM agent with:
 
