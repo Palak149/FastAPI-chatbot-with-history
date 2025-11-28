@@ -56,14 +56,13 @@ Frontend → Backend → LLM → Backend → Frontend
 FastAPI-chatbot-with-history/
 │
 ├── backend/
-
-│   ├── venv/                → Virtual environment (ignored)
 │   ├── main.py              → FastAPI app + endpoints + CORS + history
 │   ├── router_logic.py      → LLM, memory, tools, router, chat_agent()
 │ 
 ├── frontend/
 │   ├── index.html           → Chat UI + JavaScript API calls
 │
+├── .env
 ├── 3.0.0/                   → Python environment metadata (ignored by .gitignore)
 │
 ├── requirements.txt         → All dependency packages
@@ -71,6 +70,7 @@ FastAPI-chatbot-with-history/
 ├── .gitignore               → Ignore venv, pycache, system files
 │
 └── README.md                → This documentation
+├── runtime.txt
 
 3. FastAPI Backend (main.py)
 3.1 API Initialization
