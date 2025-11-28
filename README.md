@@ -265,21 +265,3 @@ emotion-aware assistants
 educational tools
 
 
-
-flowchart TD
-
-A[User Message] --> B[Router LLM<br>(Classifies input)]
-B --> |positive| P[positive_branch<br>Runs positive_tool]
-B --> |negative| N[negative_branch<br>Runs negative_tool]
-B --> |marks| M[marks_branch<br>Runs marks_tool]
-B --> |suicide| S[suicide_branch<br>Runs suicide_tool]
-B --> |default| D[default_branch<br>Runs default_tool]
-
-P --> R[Final Response]
-N --> R
-M --> R
-S --> R
-D --> R
-
-R --> MEM[Save to Memory]
-
