@@ -1,32 +1,32 @@
-# This file handles the main chatbot logic:
-#   1. LLM setup using Google Gemini (via langchain_google_genai)
-#   2. Conversation memory
-#   3. Tools for different intents (happy, sad, marks, suicide, default)
-#   4. Router to classify user input
-#   5. Delegation to correct tool
-#   6. Main async chat_agent function for FastAPI
-# ------------------------------
+# ====================================================================
+# router_logic.py
+# ====================================================================
+# This file handles the main chatbot logic for FastAPI:
+# 1. Sets up the Google Gemini LLM via langchain_google_genai
+# 2. Implements conversation memory using LangChain
+# 3. Defines async tools for different intents (positive, negative, marks, suicide, default)
+# 4. Uses a LangChain-based router to classify user input
+# 5. Routes user messages to the correct tool asynchronously
+# 6. Stores conversation in memory
+# ====================================================================
 
-from langchain_google_genai import ChatGoogleGenerativeAI  # Wrapper for Google Gemini LLM
-from langchain_core.prompts import ChatPromptTemplate        # Structured prompts for LLM
-from langchain_core.output_parsers import StrOutputParser   # Convert model output to string
-from langchain_core.runnables import RunnableBranch, RunnablePassthrough  # Routing system
+from langchain_google_genai import ChatGoogleGenerativeAI  # Google Gemini LLM wrapper
+from langchain_core.prompts import ChatPromptTemplate        # Structured prompts
+from langchain_core.output_parsers import StrOutputParser   # Parse LLM output to string
 from langchain.memory import ConversationBufferMemory       # In-memory chat history
-from dotenv import load_dotenv                               # Load API keys from .env
+from dotenv import load_dotenv                               # Load API keys
 import json
-import os
-import asyncio  # For running async LLM calls in routing
+import asyncio  # For async LLM calls
 
 # ------------------------------
 # Load environment variables
 # ------------------------------
-load_dotenv()  # Loads API keys or config from a .env file
+load_dotenv()  # Load API keys or config from a .env file
 
 # ============================================================
-#                     LLM (GOOGLE GEMINI MODEL)
+#                     LLM (GOOGLE GEMINI)
 # ============================================================
-# Instantiate the Google Gemini LLM wrapper
-# convert_system_message_to_human=True ensures system messages are understandable
+# Instantiate the LLM with convert_system_message_to_human=True
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
     convert_system_message_to_human=True
@@ -35,18 +35,17 @@ llm = ChatGoogleGenerativeAI(
 # ============================================================
 #                      MEMORY SYSTEM
 # ============================================================
-# Stores past conversation for context, so model remembers previous messages
+# Stores past conversation context so the model can reference it
 memory = ConversationBufferMemory(
-    input_key="request",        # Key for user input
+    input_key="request",        # User input key
     memory_key="chat_history",  # Key where chat history is stored
-    return_messages=True,       # Return full messages
-    output_key="response"       # Key for model response
+    return_messages=True,       # Return full chat history messages
+    output_key="response"       # LLM output key
 )
 
 # ============================================================
 #                   SAMPLE MARKS DATA
 # ============================================================
-# Static data for marks queries
 marks_data = {
     "Alice": {"Math": 95, "Science": 88, "English": 92},
     "Bob": {"Math": 78, "Science": 85, "English": 80}
@@ -56,16 +55,16 @@ marks_data = {
 #                         TOOLS
 # ============================================================
 # Each tool is an async function that sends a prompt to the LLM
-# and returns a response. Tools are chosen based on user intent.
+# and returns the content. Tools are selected based on intent.
 
 async def positive_tool(request, chat_history):
-    """Handle happy messages."""
+    """Handle happy/positive messages."""
     prompt = f"You detected the user is happy.\nUser: {request}\nChat history: {chat_history}"
-    res = await llm.ainvoke(prompt)  # async call to LLM
+    res = await llm.ainvoke(prompt)
     return res.content
 
 async def negative_tool(request, chat_history):
-    """Handle sad or stressed messages."""
+    """Handle sad, worried, or stressed messages."""
     prompt = f"User is sad or worried.\nUser: {request}\nChat history: {chat_history}"
     res = await llm.ainvoke(prompt)
     return res.content
@@ -80,7 +79,7 @@ async def marks_tool(request, chat_history):
     return res.content
 
 async def suicide_tool_dynamic(request, chat_history):
-    """Safe response for self-harm messages."""
+    """Safe response tool for self-harm messages."""
     prompt = (
         f"User shows signs of self-harm.\n"
         f"Talk safely, calmly, and never give harmful instructions.\n"
@@ -90,7 +89,7 @@ async def suicide_tool_dynamic(request, chat_history):
     return res.content
 
 async def default_tool(request, chat_history):
-    """Fallback tool for generic queries."""
+    """Fallback tool for generic or uncategorized queries."""
     prompt = f"General query.\nUser: {request}\nChat history: {chat_history}"
     res = await llm.ainvoke(prompt)
     return res.content
@@ -98,8 +97,7 @@ async def default_tool(request, chat_history):
 # ============================================================
 #                 ROUTER PROMPT (INTENT CLASSIFIER)
 # ============================================================
-# This LLM-based classifier categorizes user messages into:
-# positive | negative | marks | suicide | default
+# LLM-based classifier that categorizes user messages
 router_prompt = ChatPromptTemplate.from_messages([
     ("system", """
         You are a classifier. Categorize the user request:
@@ -115,95 +113,51 @@ router_prompt = ChatPromptTemplate.from_messages([
     ("user", "{request}")  # Placeholder for user message
 ])
 
-# Router chain = prompt → LLM → parse output as string
+# Chain: prompt -> LLM -> parse string
 router_chain = router_prompt | llm | StrOutputParser()
-
-# ============================================================
-#                DECISION CHECK FUNCTIONS
-# ============================================================
-# These check the router's decision and return True/False
-def is_positive(x): return x["decision"] == "positive"
-def is_negative(x): return x["decision"] == "negative"
-def is_marks(x): return x["decision"] == "marks"
-def is_suicide(x): return x["decision"] == "suicide"
-
-# ============================================================
-#                      TOOL BRANCHES
-# ============================================================
-# Each branch runs the correct tool and labels which tool was used.
-# asyncio.run() is used because RunnablePassthrough expects a synchronous lambda.
-
-positive_branch = RunnablePassthrough().assign(
-    text=lambda x: asyncio.run(positive_tool(x["request"], x["chat_history"])),
-    tool=lambda x: "positive"
-)
-
-negative_branch = RunnablePassthrough().assign(
-    text=lambda x: asyncio.run(negative_tool(x["request"], x["chat_history"])),
-    tool=lambda x: "negative"
-)
-
-marks_branch = RunnablePassthrough().assign(
-    text=lambda x: asyncio.run(marks_tool(x["request"], x["chat_history"])),
-    tool=lambda x: "marks"
-)
-
-suicide_branch = RunnablePassthrough().assign(
-    text=lambda x: asyncio.run(suicide_tool_dynamic(x["request"], x["chat_history"])),
-    tool=lambda x: "suicide"
-)
-
-default_branch = RunnablePassthrough().assign(
-    text=lambda x: asyncio.run(default_tool(x["request"], x["chat_history"])),
-    tool=lambda x: "default"
-)
-
-# ============================================================
-#                   ROUTER DECISION ENGINE
-# ============================================================
-# RunnableBranch checks each condition in order and runs the matching branch
-delegation_chain = RunnableBranch(
-    (is_positive, positive_branch),
-    (is_negative, negative_branch),
-    (is_marks, marks_branch),
-    (is_suicide, suicide_branch),
-    default_branch  # fallback if none match
-)
 
 # ============================================================
 #                  MAIN CHAT AGENT FUNCTION
 # ============================================================
-async def chat_agent(user_input):
+async def chat_agent(user_input: str):
     """
-    Main async chat agent used by FastAPI /chat endpoint.
+    Async chat agent for FastAPI /chat endpoint.
+
     Steps:
-      1. Load chat history from memory
-      2. Classify user input (intent detection)
-      3. Route to correct tool branch
-      4. Save conversation in memory
-      5. Return structured response
+    1. Load chat history from memory
+    2. Classify user input (intent detection)
+    3. Route to correct async tool
+    4. Save conversation in memory
+    5. Return structured response
     """
-    # Step 1: Load past chat history
+    # Step 1: Load chat history
     chat_history = memory.load_memory_variables({})["chat_history"]
 
-    # Step 2: Classify intent using async router
+    # Step 2: Classify intent
     decision = (await router_chain.ainvoke({"request": user_input})).strip()
 
-    # Step 3: Prepare data for delegation
-    data = {
-        "request": user_input,
-        "chat_history": chat_history,
-        "decision": decision
-    }
+    # Step 3: Route to the correct async tool
+    if decision == "positive":
+        text = await positive_tool(user_input, chat_history)
+        tool_used = "positive"
+    elif decision == "negative":
+        text = await negative_tool(user_input, chat_history)
+        tool_used = "negative"
+    elif decision == "marks":
+        text = await marks_tool(user_input, chat_history)
+        tool_used = "marks"
+    elif decision == "suicide":
+        text = await suicide_tool_dynamic(user_input, chat_history)
+        tool_used = "suicide"
+    else:
+        text = await default_tool(user_input, chat_history)
+        tool_used = "default"
 
-    # Step 4: Run the correct tool branch
-    result = await delegation_chain.arun(data)
-
-    # Step 5: Save conversation to memory
+    # Step 4: Save conversation to memory
     memory.save_context(
         {"request": user_input},
-        {"response": result["text"], "tool_used": result["tool"]}
+        {"response": text, "tool_used": tool_used}
     )
 
-    # Step 6: Return structured response
-    return {"response": result["text"], "tool_used": result["tool"]}
+    # Step 5: Return structured response
+    return {"response": text, "tool_used": tool_used}
