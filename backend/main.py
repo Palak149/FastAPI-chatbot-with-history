@@ -13,11 +13,16 @@ app = FastAPI()
 # ------------------------------
 # CORS allows your frontend (running on a different domain/port) to call this API.
 # In production, replace "*" with the actual URL of your deployed frontend for security.
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
-    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
-    allow_headers=["*"]   # Allow all headers in requests
+    allow_origins=[
+        "https://fastapi-chatbot-with-history-1.onrender.com",
+        "https://fastapi-chatbot-with-history.onrender.com"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ------------------------------
