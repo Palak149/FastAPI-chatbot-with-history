@@ -1,163 +1,250 @@
-# ====================================================================
-# router_logic.py
-# ====================================================================
-# This file handles the main chatbot logic for FastAPI:
-# 1. Sets up the Google Gemini LLM via langchain_google_genai
-# 2. Implements conversation memory using LangChain
-# 3. Defines async tools for different intents (positive, negative, marks, suicide, default)
-# 4. Uses a LangChain-based router to classify user input
-# 5. Routes user messages to the correct tool asynchronously
-# 6. Stores conversation in memory
-# ====================================================================
+"""
+This file handles the entire chatbot logic:
 
-from langchain_google_genai import ChatGoogleGenerativeAI  # Google Gemini LLM wrapper
-from langchain_core.prompts import ChatPromptTemplate        # Structured prompts
-from langchain_core.output_parsers import StrOutputParser   # Parse LLM output to string
-from langchain.memory import ConversationBufferMemory       # In-memory chat history
-from dotenv import load_dotenv                               # Load API keys
-import json
-import asyncio  # For async LLM calls
+✔ Google Gemini LLM (via langchain_google_genai)
+✔ Intent classification using an LLM (router)
+✔ Async tools for different types of messages
+✔ LLM-generated responses ONLY (NO fixed text)
+✔ Conversation memory using LangChain
+✔ Async chat agent used in FastAPI backend
 
-# ------------------------------
+Every step is controlled by the LLM — no hardcoded answers.
+"""
+
+# ---------------------------------------------------------
+# Imports
+# ---------------------------------------------------------
+from langchain_google_genai import ChatGoogleGenerativeAI      # Main LLM (Gemini)
+from langchain_core.prompts import ChatPromptTemplate           # For structured prompt templates
+from langchain_core.output_parsers import StrOutputParser       # Converts model output to clean string
+from langchain.memory import ConversationBufferMemory           # Stores conversational history
+from dotenv import load_dotenv                                  # Loads GOOGLE_API_KEY from environment
+import json                                                     # Used for passing dicts as JSON text
+import asyncio                                                  # Enables async tools
+
+
+# ---------------------------------------------------------
 # Load environment variables
-# ------------------------------
-load_dotenv()  # Load API keys or config from a .env file
+# ---------------------------------------------------------
+# .env must contain: GOOGLE_API_KEY="your_key_here"
+load_dotenv()
 
-# ============================================================
-#                     LLM (GOOGLE GEMINI)
-# ============================================================
-# Instantiate the LLM with convert_system_message_to_human=True
+
+# ---------------------------------------------------------
+# Initialize Google Gemini LLM
+# ---------------------------------------------------------
+# convert_system_message_to_human=True:
+#   Makes Gemini treat system prompts as if sent by a human,
+#   improving adherence after an update in Gemini behavior.
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
     convert_system_message_to_human=True
 )
 
-# ============================================================
-#                      MEMORY SYSTEM
-# ============================================================
-# Stores past conversation context so the model can reference it
+
+# ---------------------------------------------------------
+# Conversation Memory
+# ---------------------------------------------------------
+# This memory stores ALL chat history (user+AI messages)
+# so the LLM can maintain context across multiple turns.
 memory = ConversationBufferMemory(
-    input_key="request",        # User input key
-    memory_key="chat_history",  # Key where chat history is stored
-    return_messages=True,       # Return full chat history messages
-    output_key="response"       # LLM output key
+    input_key="request",    # The name of the field where user input enters
+    memory_key="chat_history",  # Where memory will be stored
+    output_key="response",      # Name of stored LLM output
+    return_messages=True         # Store messages as objects instead of plain text
 )
 
-# ============================================================
-#                   SAMPLE MARKS DATA
-# ============================================================
+
+# ---------------------------------------------------------
+# Sample marks dataset (used by the marks tool)
+# ---------------------------------------------------------
+# This dictionary is NOT used to generate direct responses.
+# Instead, the LLM receives this data and decides how to answer.
 marks_data = {
     "Alice": {"Math": 95, "Science": 88, "English": 92},
-    "Bob": {"Math": 78, "Science": 85, "English": 80}
+    "Bob":   {"Math": 78, "Science": 85, "English": 80}
 }
 
-# ============================================================
-#                         TOOLS
-# ============================================================
-# Each tool is an async function that sends a prompt to the LLM
-# and returns the content. Tools are selected based on intent.
+
+# ---------------------------------------------------------
+# Async LLM-based TOOLS
+# ---------------------------------------------------------
+# Every tool builds a different prompt style for the LLM.
+# There are absolutely NO predefined replies — the LLM
+# generates the complete response every time.
+# ---------------------------------------------------------
 
 async def positive_tool(request, chat_history):
-    """Handle happy/positive messages."""
-    prompt = f"You detected the user is happy.\nUser: {request}\nChat history: {chat_history}"
-    res = await llm.ainvoke(prompt)
-    return res.content
+    """
+    Used when user expresses happiness or positivity.
+    Creates a positive, encouraging style response.
+    """
+    prompt = (
+        f"The user sounds happy.\n\n"
+        f"User: {request}\n\n"
+        f"Chat history: {chat_history}\n\n"
+        f"Reply in an uplifting, warm, positive tone."
+    )
+    result = await llm.ainvoke(prompt)
+    return result.content
+
 
 async def negative_tool(request, chat_history):
-    """Handle sad, worried, or stressed messages."""
-    prompt = f"User is sad or worried.\nUser: {request}\nChat history: {chat_history}"
-    res = await llm.ainvoke(prompt)
-    return res.content
+    """
+    Used when user is sad, stressed, angry, confused, or upset.
+    The LLM replies empathetically — not predefined.
+    """
+    prompt = (
+        f"The user seems sad, stressed, or upset.\n\n"
+        f"User: {request}\n\n"
+        f"Chat history: {chat_history}\n\n"
+        f"Respond with emotional comfort and empathy."
+    )
+    result = await llm.ainvoke(prompt)
+    return result.content
+
 
 async def marks_tool(request, chat_history):
-    """Return student marks from predefined dictionary."""
+    """
+    When user asks about academic marks.
+    The LLM gets the marks JSON and forms a natural-language answer.
+    """
     prompt = (
-        f"Here is student marks data:\n{json.dumps(marks_data, indent=2)}\n\n"
-        f"User question: {request}\nChat history: {chat_history}"
+        f"Here is the student marks dataset:\n"
+        f"{json.dumps(marks_data, indent=2)}\n\n"
+        f"User question: {request}\n"
+        f"Chat history: {chat_history}\n\n"
+        f"Use the dataset above to answer the question naturally."
     )
-    res = await llm.ainvoke(prompt)
-    return res.content
+    result = await llm.ainvoke(prompt)
+    return result.content
+
 
 async def suicide_tool_dynamic(request, chat_history):
-    """Safe response tool for self-harm messages."""
+    """
+    SAFETY CRITICAL TOOL — used for suicidal or self-harm messages.
+    NO fixed answer — the LLM generates empathetic, safe messages.
+    """
     prompt = (
-        f"User shows signs of self-harm.\n"
-        f"Talk safely, calmly, and never give harmful instructions.\n"
-        f"User: {request}\nChat history: {chat_history}"
+        "The user has expressed self-harm or suicidal thoughts.\n"
+        "Your response MUST:\n"
+        "- Be extremely empathetic\n"
+        "- Encourage reaching out to close friends/family\n"
+        "- Suggest contacting a professional or helpline\n"
+        "- NOT provide any instructions for self-harm\n\n"
+        f"User: {request}\n\n"
+        f"Chat history: {chat_history}"
     )
-    res = await llm.ainvoke(prompt)
-    return res.content
+    result = await llm.ainvoke(prompt)
+    return result.content
+
 
 async def default_tool(request, chat_history):
-    """Fallback tool for generic or uncategorized queries."""
-    prompt = f"General query.\nUser: {request}\nChat history: {chat_history}"
-    res = await llm.ainvoke(prompt)
-    return res.content
+    """
+    General conversation tool used when no specific category matches.
+    """
+    prompt = (
+        f"General conversation.\n\n"
+        f"User: {request}\n"
+        f"Chat history: {chat_history}\n\n"
+        f"Respond naturally and helpfully."
+    )
+    result = await llm.ainvoke(prompt)
+    return result.content
 
-# ============================================================
-#                 ROUTER PROMPT (INTENT CLASSIFIER)
-# ============================================================
-# LLM-based classifier that categorizes user messages
+
+# ---------------------------------------------------------
+# ROUTER LOGIC — The LLM chooses the intent category
+# ---------------------------------------------------------
+# The LLM decides between:
+#   positive | negative | marks | suicide | default
+#
+# The response of this router is a SINGLE WORD.
+# ---------------------------------------------------------
+
 router_prompt = ChatPromptTemplate.from_messages([
     ("system", """
-        You are a classifier. Categorize the user request:
+        You are an intent classifier.
 
-        positive → happiness
-        negative → sadness/complaint
-        marks → student marks query
-        suicide → self-harm signals
-        default → everything else
+        Classify the user's message into EXACTLY one:
+        - positive
+        - negative
+        - marks
+        - suicide
+        - default
 
-        Output ONLY: positive | negative | marks | suicide | default
+        Rules:
+        positive → user is happy, joyful, excited
+        negative → user is sad, stressed, angry, upset
+        marks → user asks about academic marks
+        suicide → self-harm or suicidal intent
+        default → anything else
+
+        Output ONLY one word.
     """),
-    ("user", "{request}")  # Placeholder for user message
+    ("user", "{request}")
 ])
 
-# Chain: prompt -> LLM -> parse string
 router_chain = router_prompt | llm | StrOutputParser()
 
-# ============================================================
-#                  MAIN CHAT AGENT FUNCTION
-# ============================================================
-async def chat_agent(user_input: str):
-    """
-    Async chat agent for FastAPI /chat endpoint.
 
-    Steps:
-    1. Load chat history from memory
-    2. Classify user input (intent detection)
-    3. Route to correct async tool
-    4. Save conversation in memory
-    5. Return structured response
+# ---------------------------------------------------------
+# MAIN CHAT AGENT (async)
+# ---------------------------------------------------------
+# Steps:
+#   1. Load conversation history
+#   2. Ask LLM to classify intent
+#   3. Call correct tool
+#   4. Save the new interaction into memory
+#   5. Return LLM response + tool used
+#
+# FastAPI calls this function.
+# ---------------------------------------------------------
+
+async def chat_agent(user_input):
     """
-    # Step 1: Load chat history
+    This is the main entry point used by FastAPI (/chat endpoint).
+
+    Every response is generated by Gemini via LangChain.
+    """
+
+    # 1. Load memory/history (entire conversation so far)
     chat_history = memory.load_memory_variables({})["chat_history"]
 
-    # Step 2: Classify intent
-    decision = (await router_chain.ainvoke({"request": user_input})).strip()
+    # 2. LLM classifies intent
+    decision_raw = await router_chain.ainvoke({"request": user_input})
+    decision = decision_raw.strip().lower()
+    decision = decision.split()[0]  # Remove any accidental extra words
 
-    # Step 3: Route to the correct async tool
+    # 3. Route request to the selected tool
     if decision == "positive":
-        text = await positive_tool(user_input, chat_history)
+        llm_response = await positive_tool(user_input, chat_history)
         tool_used = "positive"
+
     elif decision == "negative":
-        text = await negative_tool(user_input, chat_history)
+        llm_response = await negative_tool(user_input, chat_history)
         tool_used = "negative"
+
     elif decision == "marks":
-        text = await marks_tool(user_input, chat_history)
+        llm_response = await marks_tool(user_input, chat_history)
         tool_used = "marks"
+
     elif decision == "suicide":
-        text = await suicide_tool_dynamic(user_input, chat_history)
+        llm_response = await suicide_tool_dynamic(user_input, chat_history)
         tool_used = "suicide"
+
     else:
-        text = await default_tool(user_input, chat_history)
+        llm_response = await default_tool(user_input, chat_history)
         tool_used = "default"
 
-    # Step 4: Save conversation to memory
+    # 4. Save new conversation turn to memory
     memory.save_context(
         {"request": user_input},
-        {"response": text, "tool_used": tool_used}
+        {"response": llm_response, "tool_used": tool_used}
     )
 
-    # Step 5: Return structured response
-    return {"response": text, "tool_used": tool_used}
+    # 5. Returned to FastAPI → sent to frontend
+    return {
+        "response": llm_response,  # LLM-generated message
+        "tool_used": tool_used     # The tool category used
+    }
