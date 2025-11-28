@@ -39,7 +39,6 @@ llm = ChatGoogleGenerativeAI(
 #  Memory Setup
 # ---------------------------------------------------------
 # ConversationBufferMemory stores the context (chat history)
-# Only stores user input ("request") and AI output ("response")
 # =========================================================
 memory = ConversationBufferMemory(
     input_key="request",        # Key used for user message
