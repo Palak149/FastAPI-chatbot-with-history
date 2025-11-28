@@ -1,16 +1,3 @@
-"""
-This file handles the entire chatbot logic:
-
-✔ Google Gemini LLM (via langchain_google_genai)
-✔ Intent classification using an LLM (router)
-✔ Async tools for different types of messages
-✔ LLM-generated responses ONLY (NO fixed text)
-✔ Conversation memory using LangChain
-✔ Async chat agent used in FastAPI backend
-
-Every step is controlled by the LLM — no hardcoded answers.
-"""
-
 # ---------------------------------------------------------
 # Imports
 # ---------------------------------------------------------
