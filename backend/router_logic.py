@@ -30,12 +30,9 @@ load_dotenv()
 # =========================================================
 #  Initialize LLM (Google Gemini)
 # ---------------------------------------------------------
-# convert_system_message_to_human=True helps Gemini better
-# understand system prompts. Note: this option may be deprecated.
 # =========================================================
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
-    convert_system_message_to_human=True
+    model="gemini-2.5-flash"
 )
 
 # =========================================================
